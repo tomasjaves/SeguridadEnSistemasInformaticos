@@ -1,4 +1,4 @@
-#include "../include/rsa.h"
+#include "../include/firma-rsa.h"
 
 /**
  * @brief Constructor de la clase RSA.
@@ -8,7 +8,7 @@
  * @param d
  * @param texto
  */
-RSA::RSA(int p, int q, int d, std::string texto) {
+RSA::RSA(int p, int q, int e, std::string texto) {
   // Comprobamos que p y q son primos
   if (!LehmanPeralta(p) || !LehmanPeralta(q)) {
     // Si no lo son, lanzamos una excepción
@@ -23,20 +23,31 @@ RSA::RSA(int p, int q, int d, std::string texto) {
   phi_ = (p - 1) * (q - 1);
   n_ = p * q;
   // Comprobamos que d tiene inverso modular
-  if (!InversoModular(d, phi_)) {
+  if (!InversoModular(e, phi_)) {
     // Si no lo tiene, lanzamos una excepción
     throw std::invalid_argument("d no tiene inverso modular.");
     return;
   }
-  std::cout << "Se comprueba que " << YELLOW << BOLD << "d " << RESET << "es "
+  std::cout << "Se comprueba que " << YELLOW << BOLD << "e " << RESET << "es "
             << YELLOW << BOLD << "primo " << RESET << "con " << YELLOW << BOLD
             << "Φ(n) = " << RESET << phi_ << std::endl;
-  d_ = d;
-  std::cout << "Se calcula " << YELLOW << BOLD << "e " << RESET << "= " << e_
+  e_ = e;
+  std::cout << "Se calcula " << YELLOW << BOLD << "d " << RESET << "= " << d_
             << std::endl;
   texto_ = texto;
-  // Eliminamos los espacios del texto
-  EraseSpaces();
+}
+
+/**
+ * @brief Constructor de la clase RSA.
+ *
+ * @param p
+ * @param q
+ * @param texto
+ */
+RSA::RSA(const int& e, const int& n, const std::string& texto) {
+  valor_texto_ = std::stoi(texto);
+  e_A = e;
+  n_A = n;
 }
 
 /**
@@ -150,16 +161,16 @@ int RSA::McdExtendido(int a, int b, int &x, int &y) {
  * @param m
  * @return int
  */
-bool RSA::InversoModular(int d, int phi) {
-  // Calculamos el inverso modular de d y phi
+bool RSA::InversoModular(int e, int phi) {
+  // Calculamos el inverso modular de e y phi
   int x, y;
-  int mcd = McdExtendido(d, phi, x, y);
+  int mcd = McdExtendido(e, phi, x, y);
   // Si el mcd no es 1, no tiene inverso modular
   if (mcd != 1) {
     return false;
   }
   // Si el mcd es 1, calculamos el inverso modular.
-  e_ = (x % phi + phi) % phi;
+  d_ = (x % phi + phi) % phi;
   return true;
 }
 
@@ -233,25 +244,72 @@ void RSA::EraseSpaces() {
  *
  */
 void RSA::Encrypt() {
+  // Se pasa cada bloque a decimal para poder firmar, obteniendo x
+  for (int x : texto_decimal_) {
+    // Se calcula el texto cifrado con la fórmula c = x^d mod n
+    int c = ExponenciacionRapida(x, d_, n_);
+    // Se añade el texto cifrado al vector de texto cifrado
+    texto_cifrado_.push_back(c);
+  }
+}
+
+/**
+ * @brief Función que decodifica el texto cifrado.
+ *
+ */
+void RSA::Decode(const int& c) {
+  // Asignamos una letra del alfabeto a cada número del texto cifrado
+  std::string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  for (char letter : alphabet) {
+    // Si el texto original es igual al valor de la letra en el alfabeto, se añade al texto decodificado
+    if (c == letter - 'A') {
+      texto_descifrado_ += letter;
+      break;
+    }
+  }
+}
+
+/**
+ * @brief Función que cifra el texto.
+ *
+ */
+void RSA::Ink() {
+  // Eliminamos los espacios del texto
+  EraseSpaces();
   // Convertimos el texto a decimal
   ToDecimal();
-
-  std::cout << "Se pasa " << YELLOW << BOLD << "cada bloque " << RESET
-            << "a " << YELLOW << BOLD << "decimal " << RESET << "para poder "
-            << YELLOW << BOLD << "cifrar" << RESET << ", obteniendo: ";
-  for (size_t i = 0; i < texto_decimal_.size(); ++i) {
-    std::cout << texto_decimal_[i] << ", ";
+  
+  std::cout << "Se pasa cada bloque a" << BOLD << YELLOW << " decimal " << RESET
+            << "para poder" << BOLD << YELLOW << " firmar " << RESET << "obteniendo ";
+  // Se muestra el texto en decimal
+  for (int x : texto_decimal_) {
+    std::cout << x << ", ";
   }
   std::cout << std::endl;
-
-  // Ciframos el texto con la exponeciación rápida
-  for (size_t i = 0; i < texto_decimal_.size(); ++i) {
-    texto_cifrado_.push_back(ExponenciacionRapida(texto_decimal_[i], e_, n_));
-  }
-  std::cout << "Se calcula en " << YELLOW << BOLD << "decimal " << RESET
-            << "el " << YELLOW << BOLD << "texto cifrado" << RESET << ": ";
-  for (size_t i = 0; i < texto_cifrado_.size(); ++i) {
-    std::cout << texto_cifrado_[i] << ", ";
+  // Se cifra el texto
+  Encrypt();
+  std::cout << "Se calcula en" << BOLD << YELLOW << " decimal " << RESET 
+            << "el texto" << BOLD << YELLOW << " cifrado" << RESET << ": ";
+  // Se muestra el texto cifrado en decimal
+  for (int x : texto_cifrado_) {
+    std::cout << x << ", ";
   }
   std::cout << std::endl;
+  // Inicializamos el vector de texto cifrado
+  texto_cifrado_.clear();
+}
+
+/**
+ * @brief Función que verifica la firma.
+ *
+ */
+void RSA::Verify() {
+  // Se calcula la potencia valor_texto_ elevado a e_A (mod n_A)
+  int c = ExponenciacionRapida(valor_texto_, e_A, n_A);
+  std::cout << "Se calcula la" << BOLD << YELLOW << " potencia " << RESET
+            << valor_texto_ << "^" << e_A << " (mod " << n_A << ") " << "obteniendo " << c << std::endl;
+  // Se decodifica obteniendo el valor original
+  Decode(c);
+  std::cout << "Se" << BOLD << YELLOW << " decodifica " << RESET << "obteniendo el" 
+            << BOLD << YELLOW << " texto original" << RESET << ": " << texto_descifrado_ << std::endl;
 }
