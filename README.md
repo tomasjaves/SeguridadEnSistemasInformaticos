@@ -25,7 +25,7 @@ Las prácticas están orientadas a aplicar los conocimientos teóricos mediante 
 - `Practica08/`: Algoritmo de Diffie-Hellman
 - `Practica09/`: Cifrado RSA
 - `Practica10/`: Cifrado Diffie-Hellman y ElGamal Elípticos
-- `Practica12/`: Cifrado Firma
+- `Practica12/`: Cifrado Firma RSA
 
 Cada carpeta contiene el código fuente en C++, junto con la documentación necesaria para comprender y ejecutar cada práctica.
 
